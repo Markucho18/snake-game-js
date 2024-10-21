@@ -1,14 +1,17 @@
 let app = document.getElementById("app")
 
 gameStatus = "notPlaying"
+updateSpeed = 150
+
+let snakeMovement = "up"
 
 let cells = []
+let snakeBody = [120]
 
 for(let i = 0; i < 256; i++){
   cells.push(0)
 }
-
-console.log(cells)
+cells[120] = 1 
 
 function createBoard(){
   let table = document.createElement("table")
@@ -29,33 +32,84 @@ function createBoard(){
   }
   table.appendChild(tableBody)
   app.appendChild(table)
-  //document.getElementById("120").style.backgroundColor = "white"
+  document.getElementById("120").classList.add("snake")
 }
 
+score = document.createElement("p")
+score.textContent = `Score: ${snakeBody.length}`
+score.id = "score"
+app.appendChild(score)
+
+let controlActions = {
+  "left": (cellIndex) => cellIndex - 1, 
+  "right": (cellIndex) => cellIndex + 1,
+  "up": (cellIndex) => cellIndex - 16,
+  "down": (cellIndex) => cellIndex + 16 
+}
 
 function generateApple(){
   let randomNum = Math.trunc(Math.random() * cells.length)
-  document.getElementById(randomNum).classList.add("apple")
+  document.getElementById(randomNum + 1).classList.add("apple")
 }
-  
-let snakeMovement = "up"
-let currentCell = 120
-snakeWidth = 1
 
-let controlActions = {
-  "left": () => currentCell = currentCell - 1, 
-  "right": () => currentCell = currentCell + 1,
-  "up": () => currentCell = currentCell - 16,
-  "down": () => currentCell = currentCell + 16 
+function growSnake(){
+  currentCell = snakeBody[0]
+  if(snakeMovement == "up") snakeBody.push(controlActions["down"](currentCell))
+  else if(snakeMovement == "down") snakeBody.push(controlActions["up"](currentCell))
+  else if(snakeMovement == "right") snakeBody.push(controlActions["left"](currentCell))
+  else if(snakeMovement == "left") snakeBody.push(controlActions["right"](currentCell))
+}
+
+function eatApple(){
+  document.querySelector(".apple").classList.remove("apple")
+  generateApple()
+  growSnake()
+  score.textContent = `Score: ${snakeBody.length}`
+  console.log(snakeBody.length)
+}
+
+//Actualizar si es el primero
+//Remplazar el indice de los demas con el del siguiente
+function moveSnake(){
+  snakeBody.forEach((cell, i) => {
+    if(i == 0){
+      cells[cell] = 0
+      cell = controlActions[snakeMovement](cell)
+      console.log("Cell[0] en moveSnake(): ", cell)
+      cells[cell] = 1
+    }
+    else{
+      cells[cell] = 0
+      cell = cell[i - 1]
+      cells[cell] = 1
+    }
+  })
+}
+
+function updateBoard(){
+  //Check apple
+  if(snakeBody[0] + 1 == document.querySelector(".apple").id){
+    eatApple()
+  }
+  moveSnake()
+  //Color the cells
+  cells.forEach((cell, i) => {
+    if(cell === 1){
+      document.getElementById(i + 1).classList.add("snake")
+    }  
+    else if(cell === 0){
+      document.getElementById(i + 1).classList.remove("snake")
+    }  
+  });
+  console.log(`SnakeBody: ${snakeBody}`)
+  console.log("actualizando tablero")
 }
 
 function startPlaying(){
   gameStatus = "playing"
   movementInterval = setInterval(() => {
-    document.getElementById(currentCell).classList.remove("snake")
-    controlActions[snakeMovement]()
-    document.getElementById(currentCell).classList.add("snake")
-  }, 200)
+    updateBoard()
+  }, updateSpeed)
 }
 
 function changeDirection (e){
@@ -65,15 +119,12 @@ function changeDirection (e){
       startPlaying()
     }
     snakeMovement = (e.key.slice(5)).toLowerCase()
-    console.log(snakeMovement)
   }
 }
 
 document.addEventListener("keydown", (e) => changeDirection(e))
 
 createBoard()
-document.getElementById(120).classList.add("snake")
-
 generateApple()
 
 /*

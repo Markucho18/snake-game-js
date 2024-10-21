@@ -10,9 +10,15 @@ body{
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background-color: #e99c9c; 
+}
+
+#score{
+  color: blue;
+  font-size: 24px;
 }
 
 .board {
@@ -26,7 +32,7 @@ body{
   width: 30px;
   height: 30px;
   text-align: center;
-  border: 1px solid rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   
 }
 
