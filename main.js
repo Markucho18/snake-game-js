@@ -1,9 +1,9 @@
 let app = document.getElementById("app")
 
-gameStatus = "notPlaying"
-updateSpeed = 150
-
+let gameStatus = "notPlaying"
+let updateSpeed = 150
 let snakeMovement = "up"
+let record = 1
 
 let cells = []
 let snakeBody = [120]
@@ -11,7 +11,6 @@ let snakeBody = [120]
 for(let i = 0; i < 256; i++){
   cells.push(0)
 }
-cells[120] = 1 
 
 function createBoard(){
   let table = document.createElement("table")
@@ -32,23 +31,26 @@ function createBoard(){
   }
   table.appendChild(tableBody)
   app.appendChild(table)
-  document.getElementById("120").classList.add("snake")
+  document.getElementById("120").classList.add("snake1")
 }
 
-score = document.createElement("p")
-score.textContent = `Score: ${snakeBody.length}`
-score.id = "score"
-app.appendChild(score)
+score = document.getElementById("score")
+score.textContent = snakeBody.length
+recordContainer = document.getElementById("record")
+recordContainer.textContent = record
 
 let controlActions = {
-  "left": (cellIndex) => cellIndex - 1, 
-  "right": (cellIndex) => cellIndex + 1,
-  "up": (cellIndex) => cellIndex - 16,
-  "down": (cellIndex) => cellIndex + 16 
+  "left": (cell) => cell - 1, 
+  "right": (cell) => cell + 1,
+  "up": (cell) => cell - 16,
+  "down": (cell) => cell + 16 
 }
 
 function generateApple(){
-  let randomNum = Math.trunc(Math.random() * cells.length)
+  let randomNum
+  do{ //El do se ejecuta almenos una vez antes de verificar la condicion
+    randomNum = Math.trunc(Math.random() * cells.length) //0 - 255
+  } while(snakeBody.includes(randomNum))
   document.getElementById(randomNum + 1).classList.add("apple")
 }
 
@@ -58,51 +60,100 @@ function growSnake(){
   else if(snakeMovement == "down") snakeBody.push(controlActions["up"](currentCell))
   else if(snakeMovement == "right") snakeBody.push(controlActions["left"](currentCell))
   else if(snakeMovement == "left") snakeBody.push(controlActions["right"](currentCell))
+  console.log("Serpiente creciendo ")
 }
 
 function eatApple(){
   document.querySelector(".apple").classList.remove("apple")
   generateApple()
   growSnake()
-  score.textContent = `Score: ${snakeBody.length}`
-  console.log(snakeBody.length)
+  score.textContent = snakeBody.length
 }
 
-//Actualizar si es el primero
-//Remplazar el indice de los demas con el del siguiente
+function checkBorderCollision() {
+  let head = snakeBody[0]; 
+  if (
+    (snakeMovement === "up" && head <= 15) ||
+    (snakeMovement === "down" && head >= 240) ||
+    (snakeMovement === "left" && head % 16 === 0) ||
+    (snakeMovement === "right" && (head + 1) % 16 === 0)
+  ) {
+    gameStatus = "lost";
+    console.log("COLISION CON BORDES");
+  }
+}
+
+function checkBodyCollisions(){
+  otherSnakeCells = snakeBody.slice(1)
+  if(otherSnakeCells.includes(snakeBody[0])){
+    gameStatus = "lost"
+    console.log("COLISION CON CUERPO")
+  }
+}
+
 function moveSnake(){
-  snakeBody.forEach((cell, i) => {
+  let lastPositions = []
+  let newSnakeBody = snakeBody.map((cell, i) => {
+    lastPositions.push(cell)
     if(i == 0){
-      cells[cell] = 0
-      cell = controlActions[snakeMovement](cell)
-      console.log("Cell[0] en moveSnake(): ", cell)
-      cells[cell] = 1
+      checkBorderCollision()
+      newCell = controlActions[snakeMovement](cell) //El valor de cell
+      checkBodyCollisions()
+      return newCell
     }
     else{
-      cells[cell] = 0
-      cell = cell[i - 1]
-      cells[cell] = 1
+      return lastPositions[i - 1]
     }
   })
+  return newSnakeBody
+}
+
+let movementInterval
+
+function checkGameStatus(){
+  if(gameStatus == "lost"){
+    clearInterval(movementInterval)
+    if(snakeBody.length > record){
+      record = snakeBody.length
+      document.querySelector(".lostModalRecordMessage").textContent = `You've achieved a new record! ${record}`
+      recordContainer.textContent = record
+    }
+    document.querySelector(".lostModalBackground").style.display = "flex"
+    console.log("Perdiste el juego xd")
+  }
+}
+
+function colorCells(){
+  let colors = ['snake1', 'snake2', 'snake3'];
+  let newCells = cells.map((_, i)=>{
+    if(snakeBody.includes(i)){
+      let colorClass = colors[i % colors.length]
+      document.getElementById(i + 1).classList.add(colorClass)
+      return 1
+    }
+    else{
+      document.getElementById(i + 1).classList.remove(...colors)
+      return 0
+    }
+  })
+  cells = newCells
 }
 
 function updateBoard(){
-  //Check apple
   if(snakeBody[0] + 1 == document.querySelector(".apple").id){
     eatApple()
   }
-  moveSnake()
-  //Color the cells
-  cells.forEach((cell, i) => {
-    if(cell === 1){
-      document.getElementById(i + 1).classList.add("snake")
-    }  
-    else if(cell === 0){
-      document.getElementById(i + 1).classList.remove("snake")
-    }  
-  });
-  console.log(`SnakeBody: ${snakeBody}`)
-  console.log("actualizando tablero")
+  snakeBody = moveSnake()
+  colorCells()  
+  checkGameStatus()
+}
+
+function restartGame(){
+  document.querySelector(".lostModalBackground").style.display = "none"
+  gameStatus = "notPlaying"
+  snakeBody = [120]
+  score.textContent = snakeBody.length
+  colorCells()
 }
 
 function startPlaying(){
@@ -114,11 +165,20 @@ function startPlaying(){
 
 function changeDirection (e){
   let controls = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]
+  let newMovement = (e.key.slice(5)).toLowerCase()
+  // CHEQUEAR QUE NO PUEDA DIRIGIRSE AL OPUESTO
   if(controls.includes(e.key)){
-    if(gameStatus != "playing"){
+    if(gameStatus == "notPlaying"){
       startPlaying()
     }
-    snakeMovement = (e.key.slice(5)).toLowerCase()
+    if(
+        (snakeMovement == "up" && e.key !== "ArrowDown") ||
+        (snakeMovement == "down" && e.key !== "ArrowUp") ||
+        (snakeMovement == "left" && e.key !== "ArrowRight") ||
+        (snakeMovement == "right" && e.key !== "ArrowLeft")
+      ){
+      snakeMovement = newMovement
+    }
   }
 }
 
@@ -126,15 +186,3 @@ document.addEventListener("keydown", (e) => changeDirection(e))
 
 createBoard()
 generateApple()
-
-/*
-FUNCIONES:
-- Controlar estado del juego
-- CambiarDireccion()
-- ReiniciarJuego()
-- ComerManzana()
-- GenerarManzana()
-- MoverSerpiente()
-- CrearTablero()
-- ChequearColisiones()
-*/
